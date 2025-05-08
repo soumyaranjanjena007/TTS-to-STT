@@ -1,0 +1,26 @@
+﻿@model CoreEntities.ViewModel.VoiceVM
+
+@{
+    ViewData["Title"] = "Text to Speech";
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<form asp-action="TTS" method="post">
+    <div class="form-group">
+        <label for="Text">Enter Text</label>
+        <textarea class="form-control" id="text" name="text" rows="4"></textarea>
+        <span asp-validation-for="Text" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-primary mt-2">Convert to Speech</button>
+</form>
+
+@if (ViewBag.AudioAvailable != null && ViewBag.AudioAvailable)
+{
+    <hr />
+    <h4>Speech Output</h4>
+    <audio controls autoplay>
+        <source src="@Url.Action("PlayAudio", "Voice")" type="audio/mpeg" />
+        Your browser does not support the audio element.
+    </audio>
+}
