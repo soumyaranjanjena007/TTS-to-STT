@@ -1,6 +1,9 @@
 ﻿using CoreEntities.ViewModel;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -8,6 +11,9 @@ using System.Web;
 using System.Web.Mvc;
 //using WebApplicationTest.Models;
 using WebApplicationTest.ServiceLayer;
+//using ActionResult = Microsoft.AspNetCore.Mvc.ActionResult;
+//using ControllerBase = Microsoft.AspNetCore.Mvc.ControllerBase;
+//using HttpPostAttribute = Microsoft.AspNetCore.Mvc.HttpPostAttribute;
 
 namespace WebApplicationTest.Controllers
 {
@@ -22,7 +28,7 @@ namespace WebApplicationTest.Controllers
         // GET: Voice
         public ActionResult Index()
         {
-            
+
             return View();
         }
 
@@ -39,54 +45,58 @@ namespace WebApplicationTest.Controllers
                 _audioBytes = await _voiceService.GetSpeechAsync(model.text ?? "Hello World, wellcome to gateway ai systems, how can i help you, i am soumya here to assist you");
                 TempData["Audio"] = _audioBytes;
                 ViewBag.AudioAvailable = true;
-            }         
-        
+            }
+
 
             return View();
         }
 
-        public async Task<ActionResult> STT(){
+        public async Task<ActionResult>STT()
+        {
 
             return View();
         }
 
         [HttpPost]
-        public async Task<ActionResult> STT(VoiceVM voice)
+        
+        public async Task<ActionResult> STTs(/*IFormFile audioFile*/)
         {
-            var file = Request.Files["audioFile"];
-            if (file == null || file.ContentLength == 0)
-                return Content("No audio uploaded");
-
-            using (var client = new HttpClient())
+            HttpPostedFileBase audioFile = Request.Files["audioFile"];
+            Console.WriteLine($"Form count: {Request.Form.Count}, Form files count: {Request.Form.Count}");
+            if (audioFile == null)
             {
-                var subscriptionKey = "";
-                var region = "eastus"; // or your region
-                var endpoint = $"https://{region}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1?language=en-US";
+                return new HttpStatusCodeResult(400, "No audio found");
+                
 
-                client.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", subscriptionKey);
-                client.DefaultRequestHeaders.Add("Accept", "application/json");
+            }
 
-                using (var content = new StreamContent(file.InputStream))
-                {
-                    content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
+            try
+            {
+                var stream = audioFile.InputStream;
+                var result = await _voiceService.RecognizeSpeech(stream);
 
-                    var response = await client.PostAsync(endpoint, content);
-                    var json = await response.Content.ReadAsStringAsync();
 
-                    dynamic result = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
-                    return Content((string)result.DisplayText ?? "Unable to transcribe");
-                }
+                
+                return Json(new { transcription = result }, JsonRequestBehavior.AllowGet);
+                
+            }
+            catch(Exception ex)
+            {
+                Response.StatusCode = 500;
+                return Json(new { error = ex.Message }, JsonRequestBehavior.AllowGet);
             }
         }
 
 
         public ActionResult PlayAudio()
         {
-            
+
             if (_audioBytes == null)
                 return HttpNotFound();
 
             return File(_audioBytes, "audio/mpeg");
         }
+
+        
     }
 }
