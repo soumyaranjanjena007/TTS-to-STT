@@ -51,41 +51,73 @@ namespace WebApplicationTest.Controllers
             return View();
         }
 
-        public async Task<ActionResult>STT()
+        public async  Task<ActionResult>STT()
         {
 
             return View();
         }
 
+        //[HttpPost]
+
+        //public async Task<ActionResult> STTs()
+        //{
+        //    HttpPostedFileBase audioFile = Request.Files["audioFile"];
+        //    Console.WriteLine($"Form count: {Request.Form.Count}, Form files count: {Request.Form.Count}");
+        //    if (audioFile == null)
+        //    {
+        //        return new HttpStatusCodeResult(400, "No audio found");
+
+
+        //    }
+
+        //    try
+        //    {
+        //        var stream = audioFile.InputStream;
+        //        var result = await _voiceService.RecognizeSpeech(stream);
+
+
+
+        //        return Json(new { transcription = result }, JsonRequestBehavior.AllowGet);
+
+        //    }
+        //    catch(Exception ex)
+        //    {
+        //        Response.StatusCode = 500;
+        //        return Json(new { error = ex.Message }, JsonRequestBehavior.AllowGet);
+        //    }
+        //}
         [HttpPost]
-        
-        public async Task<ActionResult> STTs(/*IFormFile audioFile*/)
+        public async Task<ActionResult> STTs()
         {
             HttpPostedFileBase audioFile = Request.Files["audioFile"];
-            Console.WriteLine($"Form count: {Request.Form.Count}, Form files count: {Request.Form.Count}");
             if (audioFile == null)
             {
-                return new HttpStatusCodeResult(400, "No audio found");
-                
-
+                return new HttpStatusCodeResult(400, "No audio found"); 
             }
 
             try
             {
                 var stream = audioFile.InputStream;
-                var result = await _voiceService.RecognizeSpeech(stream);
+                var transcription = await _voiceService.RecognizeSpeech(stream); //  Speech-to-text
 
+                var answer = _voiceService.GetAnswerForQuestion(transcription);  // Logic-based response
 
-                
-                return Json(new { transcription = result }, JsonRequestBehavior.AllowGet);
-                
+                _audioBytes = await _voiceService.GetSpeechAsync(answer);        
+
+                return Json(new
+                {
+                    transcription = transcription,
+                    answer = answer,
+                    audioUrl = Url.Action("PlayAudio","Voice", new { id = DateTime.Now.Ticks }) 
+                }, JsonRequestBehavior.AllowGet);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Response.StatusCode = 500;
-                return Json(new { error = ex.Message }, JsonRequestBehavior.AllowGet);
+                return Json(new { error = ex.Message }, JsonRequestBehavior.AllowGet); 
             }
         }
+
 
 
         public ActionResult PlayAudio()

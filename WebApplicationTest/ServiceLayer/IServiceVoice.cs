@@ -12,7 +12,7 @@ namespace WebApplicationTest.ServiceLayer
         Task<byte[]> GetSpeechAsync(string text);
 
         Task<String> RecognizeSpeech(Stream audioStream);
-
+        string GetAnswerForQuestion(string qsn);
         //Task<String> RecognizeSpeech(string audiofile);
 
 

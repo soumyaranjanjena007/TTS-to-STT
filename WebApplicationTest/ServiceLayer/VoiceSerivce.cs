@@ -20,6 +20,48 @@ namespace WebApplicationTest.ServiceLayer
         private readonly string apiKey = "EJkZMEyoDmUqPhdfdD8e9tGkJQildCtCmKSVBdfVdB0RmXdRyp30JQQJ99BEACYeBjFXJ3w3AAAYACOGMBd1";
         private readonly string region = "eastus";
         private readonly string endpoint = "https://eastus.tts.speech.microsoft.com/cognitiveservices/v1";
+        private readonly Dictionary<string, string> qaPairs;
+
+        public VoiceSerivce()
+        {
+            //Intialize q&a pairs
+            qaPairs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "what is the weather", "The weather is sunny and pleasant today." },
+                { "what are your storage rates", "Our storage rates start from $50 per month for a 5x5 unit." },
+                { "do you have climate control", "Yes, we offer climate-controlled units to protect your belongings." },
+                { "what are your hours", "We are open 24/7 for existing customers, and office hours are 9 AM to 6 PM." },
+                { "is security available", "Yes, we have 24/7 video surveillance and gated access for your security." }
+            };
+        }
+
+        public string GetAnswerForQuestion(string qsn)
+        {
+            if (string.IsNullOrWhiteSpace(qsn))
+            {
+                return "Please ask a valid qsn";
+            }
+
+            var bestMatch = qaPairs.Keys.OrderByDescending(k => CalculationSimilarity(k, qsn)).FirstOrDefault();
+
+            return bestMatch != null ? qaPairs[bestMatch] : "I'm sorry babu, I dont have information about that shit";
+        }
+
+        private double CalculationSimilarity(string s1, string s2)
+        {
+            if(string.IsNullOrWhiteSpace(s1) || string.IsNullOrWhiteSpace(s2))
+            {
+                return 0;
+            }
+
+            var words1 = s1.ToLower().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+            var words2 = s1.ToLower().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+
+            var intersectionCount = words1.Intersect(words2).Count();
+            var unionCount = words1.Union(words2).Count();
+
+            return unionCount == 0 ? 0 : (double)intersectionCount / unionCount;
+        }
 
         public async Task<byte[]> GetSpeechAsync(string text)
         {
@@ -87,30 +129,7 @@ namespace WebApplicationTest.ServiceLayer
 
                 return json.RootElement.GetProperty("DisplayText").GetString();
             }
-            //using (var httpClient = new HttpClient())
-            //using (var audioStream = System.IO.File.OpenRead(audioStream))
-            //using (var content = new StreamContent(audioStream))
-            //{
-            //    content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
-
-            //    httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", apiKey);
-
-            //    var response = await httpClient.PostAsync(endpoint, content);
-            //    var responseString = await response.Content.ReadAsStringAsync();
-
-            //    if (!response.IsSuccessStatusCode)
-            //    {
-            //        throw new Exception($"STT request failed: {response.StatusCode}, {responseString}");
-            //    }
-
-            //    // Parse the JSON to extract the transcription text
-            //    var json = System.Text.Json.JsonDocument.Parse(responseString);
-            //    var transcription = json.RootElement.GetProperty("DisplayText").GetString();
-
-            //    return transcription;
-
-
-            //}
+            
 
         }
         //public async Task<string> RecognizeSpeech(Stream audioStream)
