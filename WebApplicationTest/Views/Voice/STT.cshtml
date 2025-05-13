@@ -223,7 +223,7 @@
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 const source = audioContext.createMediaStreamSource(audioStream);
                 analyser = audioContext.createAnalyser();
-                analyser.fftSize = 512; //2048
+                analyser.fftSize = 2048; //2048
                 source.connect(analyser);
 
                 drawVisualizer();
@@ -263,7 +263,7 @@
             const bufferLength = analyser.fftSize;
             const dataArray = new Uint8Array(bufferLength);
             let silenceStart = null;
-            const silenceThreshold = 50; 
+            const silenceThreshold = 5; 
 
             function checkSilence() {
                 if (!isRecording) return;
@@ -282,7 +282,7 @@
                 if (rms < silenceThreshold) {
                     if (!silenceStart) {
                         silenceStart = Date.now();
-                    } else if (Date.now() - silenceStart > 2000) {
+                    } else if (Date.now() - silenceStart > 3000) {
                         console.log("Silence detected, stopping recording.");
                         stopRecording();
                         return;

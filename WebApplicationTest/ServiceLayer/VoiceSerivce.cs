@@ -55,7 +55,7 @@ namespace WebApplicationTest.ServiceLayer
             }
 
             var words1 = s1.ToLower().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToHashSet();
-            var words2 = s1.ToLower().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+            var words2 = s2.ToLower().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToHashSet();
 
             var intersectionCount = words1.Intersect(words2).Count();
             var unionCount = words1.Union(words2).Count();
