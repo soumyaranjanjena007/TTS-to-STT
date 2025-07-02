@@ -1,4 +1,4 @@
-﻿@*<h2>Speech to Text (Microphone)</h2>
+﻿    @*<h2>Speech to Text (Microphone)</h2>
 
     <button id="startBtn">Start Recording</button>
     <button id="stopBtn" disabled>Stop Recording</button>
@@ -121,6 +121,12 @@
                 <audio id="answer-audio" controls class="w-100"></audio>
             </div>
         </div>
+    </div>
+
+    <div id="responseArea" style="margin-top:20px;">
+        <p><strong>Transcription:</strong> <span id="transcriptionText"></span></p>
+        <p><strong>Answer:</strong> <span id="answerText"></span></p>
+        <video id="avatarVideo" width="640" height="480" controls autoplay style="display:none;"></video>
     </div>
 </div>
 
@@ -406,9 +412,16 @@
                 const answerText = document.getElementById('answer-text');
                 const answerAudio = document.getElementById('answer-audio');
 
+                if (data.avatarVideoUrl) {
+                    $('#avatarVideo').attr('src', data.avatarVideoUrl).show();
+                } else {
+                    $('#avatarVideo').hide();
+                }
+
                 answerText.textContent = data.answer;
                 answerAudio.src = data.audioUrl;
                 answerContainer.style.display = 'block';
+                console.log(data.avatarVideoUrl);
 
                 answerAudio.play();
 

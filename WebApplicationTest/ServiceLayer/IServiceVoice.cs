@@ -14,9 +14,8 @@ namespace WebApplicationTest.ServiceLayer
         Task<String> RecognizeSpeech(Stream audioStream);
         string GetAnswerForQuestion(string qsn);
         //Task<String> RecognizeSpeech(string audiofile);
+        Task<string> StartAvatarSynthesisAsync(string text, string voiceName, string avatarCharacter, string avatarStyle);
 
-
-
-
+        Task<string> GetAvatarVideoUrlAsync(string synthesisId, int timeoutSeconds = 600, int pollIntervalSeconds = 5);
     }
 }

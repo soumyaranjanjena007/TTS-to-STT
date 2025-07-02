@@ -17,16 +17,18 @@ namespace WebApplicationTest.ServiceLayer
 {
     public class VoiceSerivce : IServiceVoice
     {
-        private readonly string apiKey = "EJkZMEyoDmUqPhdfdD8e9tGkJQildCtCmKSVBdfVdB0RmXdRyp30JQQJ99BEACYeBjFXJ3w3AAAYACOGMBd1";
-        private readonly string region = "eastus";
-        private readonly string endpoint = "https://eastus.tts.speech.microsoft.com/cognitiveservices/v1";
+        private readonly string apiKey = "8w2ynEDIjk8I9I8MbC13hd02jQOQnFKY6pkxT9bdDG9GubNbeulTJQQJ99BGACHYHv6XJ3w3AAAYACOGt067";
+        private readonly string region = "eastus2";
+        private readonly string endpoint = "https://eastus2.tts.speech.microsoft.com/cognitiveservices/v1"; //"https://eastus2.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1?language=en-US"
         private readonly Dictionary<string, string> qaPairs;
+        private readonly string avatarEndpoint = "https://eastus2.api.cognitive.microsoft.com/avatar/batchsyntheses";
 
         public VoiceSerivce()
         {
             //Intialize q&a pairs
             qaPairs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
+                {"Hi", "Hii i am Nova" },
                 { "what is the weather", "The weather is sunny and pleasant today." },
                 { "what are your storage rates", "Our storage rates start from $50 per month for a 5x5 unit." },
                 { "do you have climate control", "Yes, we offer climate-controlled units to protect your belongings." },
@@ -44,7 +46,7 @@ namespace WebApplicationTest.ServiceLayer
 
             var bestMatch = qaPairs.Keys.OrderByDescending(k => CalculationSimilarity(k, qsn)).FirstOrDefault();
 
-            return bestMatch != null ? qaPairs[bestMatch] : "I'm sorry babu, I dont have information about that shit";
+            return bestMatch != null ? qaPairs[bestMatch] : "I'm sorry babu, I dont have information about that ";
         }
 
         private double CalculationSimilarity(string s1, string s2)
@@ -64,7 +66,7 @@ namespace WebApplicationTest.ServiceLayer
         }
 
         public async Task<byte[]> GetSpeechAsync(string text)
-        {
+        { 
             var accTok = await FetchTokenAsync();
 
             using(var client =  new HttpClient())
@@ -90,6 +92,180 @@ namespace WebApplicationTest.ServiceLayer
             }
         }
 
+        /// <summary>
+        /// Initiate a batch  synthesis jon for generating an AI avatar
+        /// text = the text the avatar should speak
+        /// voiceName = the name of the voice to use (e.g., "en-US-JennyNeural")
+        /// avatarCharacter = the name of the avatar character (e.g., "lisa")
+        /// avatarStyle = the style of the avatar (e.g., "sitting")
+        
+
+        public async Task<string> StartAvatarSynthesisAsync( string text, string voiceName, string avatarCharacter, string avatarStyle)
+        {
+             using (var client = new HttpClient())
+             {
+                client.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", apiKey);
+                client.DefaultRequestHeaders.Add("User-Agent", "TestAvatar GatewayAISystems");
+
+                string synthesisId = $"batchavatar-{Guid.NewGuid()}";
+
+                var ssmlContent = $@"
+                <speak version='1.0' xml:lang='en-US'>
+                <voice name='{voiceName}'>
+                {System.Net.WebUtility.HtmlEncode(text)}
+                </voice>
+                </speak>";
+
+                var requestBody = new
+                {
+                    inputKind = "SSML",
+
+                    inputs = new[] {
+                         new { content = ssmlContent 
+                         }
+                     },
+                    synthesisConfig = new
+                    {
+                        voice = voiceName
+                    },
+                    avatarConfig = new
+                    {
+                        talkingAvatarCharacter = avatarCharacter,
+                        talkingAvatarStyle = avatarStyle
+                    },
+
+                    videoFormat = "Mp4",
+                    videoCodec = "H264",
+                    properties = new
+                    {
+                        timeToLiveInHours = 1
+                    }
+                };
+
+                var jsonBody = JsonConvert.SerializeObject(requestBody);
+                using(var content = new StringContent(jsonBody, Encoding.UTF8, "application/json"))
+                {
+                    var requestUri = $"{avatarEndpoint}/{synthesisId}?api-version=2024-08-01";
+
+                    using(var response = await client.PutAsync(requestUri, content))
+                    {
+                        response.EnsureSuccessStatusCode();
+                        var responseBody = await response.Content.ReadAsStringAsync();
+                        var jsonDoc = System.Text.Json.JsonDocument.Parse(responseBody);
+
+                        return jsonDoc.RootElement.GetProperty("id").GetString();
+                    }
+                }
+             }
+        }
+
+        //public async Task<string> GetAvatarVideoUrlAsync(string synthesisId, int timeoutSeconds = 300, int pollIntervalSeconds = 5)
+        //    {
+        //    using(var client = new HttpClient())
+        //    {
+        //       client.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", apiKey);
+        //        client.DefaultRequestHeaders.Add("User-Agent", "Test GatewayAISystems");
+
+        //        var startTime = DateTime.UtcNow;
+
+        //        string requesturi = $"{avatarEndpoint}/{synthesisId}?api-version=2024-08-01";
+
+        //        while((DateTime.UtcNow - startTime).TotalSeconds < timeoutSeconds)
+        //        {
+        //            using (var response = await client.GetAsync(requesturi))
+        //            {
+        //                response.EnsureSuccessStatusCode();
+        //                var responseBody = await response.Content.ReadAsStringAsync();
+        //                var jsonDoc = System.Text.Json.JsonDocument.Parse(responseBody);
+
+        //                var status = jsonDoc.RootElement.GetProperty("status").GetString();
+
+        //                if(status == "Succeeded")
+        //                {
+        //                    if(jsonDoc.RootElement.TryGetProperty("outputs", out var outputsElement) && outputsElement.TryGetProperty("result", out var resultElement))
+        //                    {
+        //                        return resultElement.GetString();
+        //                    }
+        //                    else
+        //                    {
+        //                        throw new Exception("Avatar synthesis succeeded but no video URL found in response.");
+        //                    }
+        //                }
+        //                else if(status == "Running" || status == "NotStarted")
+        //                {
+        //                    await Task.Delay(TimeSpan.FromSeconds(pollIntervalSeconds));
+
+        //                }
+        //                else
+        //                {
+        //                    throw new Exception($"Avatar synthesis failed with status: {status}. Response: {responseBody}");
+        //                }
+
+
+        //            }
+        //        }
+        //        throw new TimeoutException($"Avatar synthesis job {synthesisId} did not complete within the timeout of {timeoutSeconds} seconds.");
+        //    }
+        //}
+
+
+
+        public async Task<string> GetAvatarVideoUrlAsync(string synthesisId, int timeoutSeconds = 600, int pollIntervalSeconds = 5)
+        {
+            using (var client = new HttpClient())
+            {
+                client.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", apiKey);
+                client.DefaultRequestHeaders.Add("User-Agent", "TestAvatar GatewayAISystems");
+
+                var startTime = DateTime.UtcNow;
+                string requesturi = $"{avatarEndpoint}/{synthesisId}?api-version=2024-08-01";
+
+                while ((DateTime.UtcNow - startTime).TotalSeconds < timeoutSeconds)
+                {
+                    using (var response = await client.GetAsync(requesturi))
+                    {
+                        response.EnsureSuccessStatusCode();
+                        var responseBody = await response.Content.ReadAsStringAsync();
+
+                        var jsonDoc = System.Text.Json.JsonDocument.Parse(responseBody);
+                        var root = jsonDoc.RootElement;
+
+                        string status = root.GetProperty("status").GetString();
+                        Console.WriteLine($"Polling Status: {status}");
+
+                        if (status == "Succeeded")
+                        {
+                            if (root.TryGetProperty("outputs", out var outputsElement) &&
+                                outputsElement.TryGetProperty("result", out var resultElement))
+                            {
+                                if(resultElement.ValueKind == JsonValueKind.String)
+                            {
+                                return resultElement.GetString();
+                            }
+                            else if(resultElement.ValueKind == JsonValueKind.Object && resultElement.TryGetProperty("videoUrl", out var videoUrlElement))
+                            {
+                                return videoUrlElement.GetString();
+                            }
+                                else
+                                {
+                                    throw new Exception("Could not find valid video url");
+                                }
+                            }
+
+                        }
+                        else if (status == "Failed")
+                        {
+                            throw new Exception("Synthesis job failed: " + responseBody);
+                        }
+
+                        await Task.Delay(TimeSpan.FromSeconds(pollIntervalSeconds));
+                    }
+                }
+
+                throw new TimeoutException($"Avatar synthesis job {synthesisId} did not complete within {timeoutSeconds} seconds.");
+            }
+        }
+
 
         private async Task<string> FetchTokenAsync()
         {
@@ -106,10 +282,10 @@ namespace WebApplicationTest.ServiceLayer
 
         public async Task<string> RecognizeSpeech(Stream audioStream)
         {
+            //  ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             var endpoint = $"https://{region}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1?language=en-US";
 
-
-            using(var httpClient = new HttpClient())
+            using (var httpClient = new HttpClient())
             using(var content = new StreamContent(audioStream))
             {
                 content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("audio/wav");
@@ -132,6 +308,8 @@ namespace WebApplicationTest.ServiceLayer
             
 
         }
+
+
         //public async Task<string> RecognizeSpeech(Stream audioStream)
         //{
         //    var speechConfig = SpeechConfig.FromSubscription(apiKey, region);

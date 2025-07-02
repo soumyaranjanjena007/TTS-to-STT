@@ -57,35 +57,7 @@ namespace WebApplicationTest.Controllers
             return View();
         }
 
-        //[HttpPost]
-
-        //public async Task<ActionResult> STTs()
-        //{
-        //    HttpPostedFileBase audioFile = Request.Files["audioFile"];
-        //    Console.WriteLine($"Form count: {Request.Form.Count}, Form files count: {Request.Form.Count}");
-        //    if (audioFile == null)
-        //    {
-        //        return new HttpStatusCodeResult(400, "No audio found");
-
-
-        //    }
-
-        //    try
-        //    {
-        //        var stream = audioFile.InputStream;
-        //        var result = await _voiceService.RecognizeSpeech(stream);
-
-
-
-        //        return Json(new { transcription = result }, JsonRequestBehavior.AllowGet);
-
-        //    }
-        //    catch(Exception ex)
-        //    {
-        //        Response.StatusCode = 500;
-        //        return Json(new { error = ex.Message }, JsonRequestBehavior.AllowGet);
-        //    }
-        //}
+        
         [HttpPost]
         public async Task<ActionResult> STTs()
         {
@@ -100,15 +72,27 @@ namespace WebApplicationTest.Controllers
                 var stream = audioFile.InputStream;
                 var transcription = await _voiceService.RecognizeSpeech(stream); //  Speech-to-text
 
+                var stateJson = Session["chatState"] as string;
+                var state = !string.IsNullOrEmpty(stateJson) ? Newtonsoft.Json.JsonConvert.DeserializeObject<Dictionary<string, object>>(stateJson) : new Dictionary<string, object>();
+
                 var answer = _voiceService.GetAnswerForQuestion(transcription);  // Logic-based response
 
-                _audioBytes = await _voiceService.GetSpeechAsync(answer);        
+                string voiceName = "en-US-AvaMultilingualNeural"; // Default voice
+                string avatarCharacter = "lisa"; // Default avatar character
+                string avatarStyle = "graceful-sitting"; // Default avatar style
+
+                var synthesisId = await _voiceService.StartAvatarSynthesisAsync(answer, voiceName, avatarCharacter, avatarStyle); // Avatar synthesis
+
+                var avatarVideoUrl = await _voiceService.GetAvatarVideoUrlAsync(synthesisId); // Get avatar video URL
+
+               // _audioBytes = await _voiceService.GetSpeechAsync(answer);        
 
                 return Json(new
                 {
                     transcription = transcription,
                     answer = answer,
-                    audioUrl = Url.Action("PlayAudio","Voice", new { id = DateTime.Now.Ticks }) 
+                    avatarVideoUrl = avatarVideoUrl
+                    //audioUrl = Url.Action("PlayAudio","Voice", new { id = DateTime.Now.Ticks }) 
                 }, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)
